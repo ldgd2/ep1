@@ -76,10 +76,18 @@ def setup_frontend():
     is_windows = platform.system() == "Windows"
     npm_cmd = "npm.cmd" if is_windows else "npm"
     
-    cprint("[dim]Esto puede demorar unos minutos... (npm install)[/dim]", "Esto puede demorar unos minutos... (npm install)")
-    subprocess.run([npm_cmd, "install"])
+    cprint("[dim]Iniciando instalación de dependencias del Frontend...[/dim]", "Iniciando npm install...")
     
-    cprint("[bold green]Frontend configurado con exito.[/bold green]", "Frontend configurado con exito.")
+    # Intento 1: Instalación estándar
+    result = subprocess.run([npm_cmd, "install"])
+    
+    # Si falla, es probable que sea por conflictos de peer dependencies (común con Tailwind v4)
+    if result.returncode != 0:
+        cprint("\n[bold yellow]⚠️  Detectados conflictos de dependencias. Reintentando con modo Legacy...[/bold yellow]", 
+               "\n⚠️  Conflictos detectados. Reintentando con --legacy-peer-deps...")
+        subprocess.run([npm_cmd, "install", "--legacy-peer-deps"])
+    
+    cprint("[bold green]Frontend configurado con éxito.[/bold green]", "Frontend configurado con éxito.")
     os.chdir("..")
 
 def setup_env():
