@@ -85,9 +85,14 @@ async def reportar_emergencia(
 
             print(f"🖼️ URLs enviadas a IA: {full_urls}")
 
+            # Combinar descripción y texto adicional para mejor contexto
+            texto_para_ia = data.texto_adicional or data.descripcion
+            if data.texto_adicional and data.descripcion and data.texto_adicional != data.descripcion:
+                texto_para_ia = f"{data.descripcion}. {data.texto_adicional}"
+
             # Llamada al servicio de IA OpenRouter + Instructor (Multi-modal)
             ia_result = await analizar_transcripcion_whisper(
-                texto_crudo=data.texto_adicional or "Sin descripción (ver fotos)",
+                texto_crudo=texto_para_ia,
                 vehiculo_info=vehiculo_contexto,
                 categorias_disponibles=categorias_activas,
                 prioridades_disponibles=prioridades_activas,
@@ -696,10 +701,15 @@ async def actualizar_emergencia(id_emergencia: int, data: EmergenciaCreate, user
             else:
                 full_urls.append(f"{base_url_simple}/uploads/{u}")
 
+        # Combinar descripción y texto adicional para mejor contexto
+        texto_para_ia = data.texto_adicional or data.descripcion or "Sin descripción"
+        if data.texto_adicional and data.descripcion and data.texto_adicional != data.descripcion:
+            texto_para_ia = f"{data.descripcion}. {data.texto_adicional}"
+
         print(f"🖼️ [Update] URLs enviadas a IA: {full_urls}")
         
         ia_result = await analizar_transcripcion_whisper(
-            texto_crudo=data.texto_adicional or data.descripcion or "Sin descripción",
+            texto_crudo=texto_para_ia,
             vehiculo_info=vehiculo_contexto,
             categorias_disponibles=categorias_activas,
             prioridades_disponibles=prioridades_activas,

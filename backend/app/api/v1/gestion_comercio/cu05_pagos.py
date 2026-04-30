@@ -145,10 +145,14 @@ async def create_setup_intent(
     customer_id = await _get_or_create_stripe_customer(cliente, db)
     await db.commit()
     
-    intent = stripe.SetupIntent.create(
-        customer=customer_id,
-        payment_method_types=["card"],
-    )
+    try:
+        intent = stripe.SetupIntent.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+        )
+    except stripe.error.StripeError as e:
+        print(f"Error de Stripe en SetupIntent: {e}")
+        raise HTTPException(status_code=400, detail=f"No se pudo iniciar el registro de tarjeta: {str(e)}")
     
     return {"client_secret": intent.client_secret, "customer_id": customer_id}
 
@@ -203,24 +207,45 @@ async def sync_cards(
     summary="Stripe — Confirmar y guardar tarjeta en DB",
 )
 async def confirm_card(
-    payment_method_id: str,
+    data: MetodoPagoCreate,
     current=Depends(require_role("cliente")),
     db: AsyncSession = Depends(get_db),
 ):
     """Guarda el payment_method_id de Stripe en nuestra base de datos local."""
-    # Obtener detalles de la tarjeta desde Stripe
-    pm = stripe.PaymentMethod.retrieve(payment_method_id)
-    
-    nuevo_metodo = MetodoPago(
-        cliente_id=current["user_id"],
-        stripe_payment_method_id=payment_method_id,
-        marca=pm.card.brand,
-        ultimo4=pm.card.last4,
-    )
-    db.add(nuevo_metodo)
-    await db.commit()
-    await db.refresh(nuevo_metodo)
-    return nuevo_metodo
+    try:
+        payment_method_id = data.stripe_payment_method_id
+        
+        # 1. Verificar si ya existe para este usuario
+        res = await db.execute(
+            select(MetodoPago).where(
+                MetodoPago.stripe_payment_method_id == payment_method_id
+            )
+        )
+        if res.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Esta tarjeta ya está registrada.")
+
+        # 2. Obtener detalles de la tarjeta desde Stripe (Sincrónico, pero manejamos el error)
+        try:
+            pm = stripe.PaymentMethod.retrieve(payment_method_id)
+        except stripe.error.StripeError as e:
+            raise HTTPException(status_code=400, detail=f"Error de Stripe: {str(e)}")
+        
+        nuevo_metodo = MetodoPago(
+            cliente_id=current["user_id"],
+            stripe_payment_method_id=payment_method_id,
+            marca=pm.card.brand,
+            ultimo4=pm.card.last4,
+        )
+        db.add(nuevo_metodo)
+        await db.commit()
+        await db.refresh(nuevo_metodo)
+        return nuevo_metodo
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        print(f"Error inesperado al confirmar tarjeta: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error interno al procesar la tarjeta.")
 
 @router.get(
     "/stripe/metodos",
@@ -288,7 +313,14 @@ async def create_payment_intent(
         intent_params["off_session"] = True
         intent_params["confirm"] = True
     
-    intent = stripe.PaymentIntent.create(**intent_params)
+    try:
+        intent = stripe.PaymentIntent.create(**intent_params)
+    except stripe.error.StripeError as e:
+        print(f"Error de Stripe al crear Intent: {e}")
+        raise HTTPException(status_code=400, detail=f"Error en el pago: {str(e)}")
+    except Exception as e:
+        print(f"Error inesperado en create_payment_intent: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al procesar el pago.")
     
     # Crear registro de pago en DB (Estado PENDIENTE hasta que se confirme)
     pago = Pago(

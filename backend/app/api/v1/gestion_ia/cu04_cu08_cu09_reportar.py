@@ -6,7 +6,7 @@ CU09 — Priorización de Emergencias (IA)
 POST /emergencias/analizar-audio → CU08/CU09 Pre-análisis con IA antes de reportar
 POST /emergencias/reportar       → CU04 Reportar emergencia vehicular
 """
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -27,27 +27,36 @@ from app.services.transcripcion_service import transcribir_audio_local
 
 router = APIRouter(prefix="/emergencias", tags=["IA — Reportar / Clasificar / Priorizar (CU04/CU08/CU09)"])
 
-
-# ─── CU08 + CU09: Clasificación y Priorización con IA ────────────────────────
-
 @router.post(
     "/analizar-audio",
     response_model=AnalisisEstructuradoIA,
     summary="CU08/CU09 — Clasificar y priorizar emergencia con IA (pre-reporte)",
 )
 async def analizar_audio_ia(
-    archivo_audio: UploadFile = File(..., description="Audio del cliente (mp3, wav, m4a)"),
+    archivo_audio: Optional[UploadFile] = File(None, description="Audio del cliente (opcional)"),
+    texto_escrito: Optional[str] = Form(None, description="Descripción escrita del cliente (opcional)"),
     current=Depends(require_role("cliente")),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    1. Transcribe el audio con Whisper Local (faster-whisper).
-    2. Clasifica el tipo de problema (CU08) con OpenRouter IA.
-    3. Asigna una prioridad automática (CU09) según criticidad.
-    El resultado se devuelve al cliente para confirmación antes del reporte final.
+    1. Transcribe el audio con Whisper Local (si existe).
+    2. Combina con el texto escrito (si existe).
+    3. Clasifica el tipo de problema (CU08) con OpenRouter IA.
+    4. Asigna una prioridad automática (CU09) según criticidad.
     """
+    if not archivo_audio and not texto_escrito:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un audio o una descripción escrita.")
+
     try:
-        texto_crudo = await transcribir_audio_local(archivo_audio)
+        texto_crudo = ""
+        if archivo_audio:
+            texto_crudo = await transcribir_audio_local(archivo_audio)
+        
+        if texto_escrito:
+            if texto_crudo:
+                texto_crudo = f"{texto_crudo}. Descripción adicional: {texto_escrito}"
+            else:
+                texto_crudo = texto_escrito
 
         cats_res = await db.execute(select(CategoriaProblema.id, CategoriaProblema.descripcion))
         prios_res = await db.execute(select(Prioridad.id, Prioridad.descripcion))

@@ -40,6 +40,8 @@ Debes responder ÚNICAMENTE con un objeto JSON.
 
 {regla_oro}
 
+REGLA CRÍTICA: NO supongas que el cliente ya arregló el problema. Si el cliente envía una emergencia, es porque el problema persiste y requiere asistencia técnica inmediata. Interpreta las descripciones en pasado (ej: "se me rompió la correa", "tuve un choque") como daños que están presentes AHORA y requieren reparación. Ignora cualquier frase que pueda malinterpretarse como que el problema ya no existe si el contexto general es de reporte de avería.
+
 VEHÍCULO: {vehiculo_info}
 CATEGORÍAS (ID:Nombre): {cat_str}
 PRIORIDADES (ID:Nombre): {pri_str}
