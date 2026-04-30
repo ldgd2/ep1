@@ -3,6 +3,7 @@ from typing import List, Optional
 
 class FichaTecnica(BaseModel):
     diagnostico_probable: str = Field(description="Deducción técnica del problema basada en los síntomas.")
+    posibles_causas: List[str] = Field(description="Lista de posibles causas raíz que podrían estar originando el problema.")
     piezas_necesarias: List[str] = Field(description="Componentes internos del vehículo que podrían estar fallando.")
     repuestos_sugeridos: List[str] = Field(description="Lista de repuestos específicos que el taller debe llevar.")
     protocolo_tecnico: List[str] = Field(description="Pasos críticos para el técnico antes y durante la intervención.")

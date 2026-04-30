@@ -40,7 +40,10 @@ Debes responder ÚNICAMENTE con un objeto JSON.
 
 {regla_oro}
 
-REGLA CRÍTICA: NO supongas que el cliente ya arregló el problema. Si el cliente envía una emergencia, es porque el problema persiste y requiere asistencia técnica inmediata. Interpreta las descripciones en pasado (ej: "se me rompió la correa", "tuve un choque") como daños que están presentes AHORA y requieren reparación. Ignora cualquier frase que pueda malinterpretarse como que el problema ya no existe si el contexto general es de reporte de avería.
+REGLAS CRÍTICAS DE DIAGNÓSTICO:
+1. PERSISTENCIA: Si un cliente reporta una avería (ej: "se me rompió la correa", "el motor humea"), asume que el daño está presente AHORA. No supongas que ya se arregló.
+2. DEDUCCIÓN PROACTIVA: Si el reporte es vago (ej: "ayuda", "no prende"), analiza las fotos exhaustivamente. Busca fugas de líquidos, piezas rotas, deformaciones en neumáticos, o luces de advertencia en el tablero.
+3. EXPLICACIONES TÉCNICAS: Debes buscar posibles explicaciones y causas raíz del problema, incluso si el cliente no las menciona. Tu objetivo es preparar al mecánico para lo que se va a encontrar.
 
 VEHÍCULO: {vehiculo_info}
 CATEGORÍAS (ID:Nombre): {cat_str}
@@ -49,12 +52,13 @@ PRIORIDADES (ID:Nombre): {pri_str}
 Responde con este formato exacto:
 {{
   "es_valida": true,
-  "titulo_emergencia": "Título corto",
-  "resumen_taller": "Resumen para el mecánico",
+  "titulo_emergencia": "Título corto y profesional",
+  "resumen_taller": "Menciona detalladamente lo que ves en las fotos y escuchas en el audio.",
   "id_categoria": {categorias_disponibles[0]['id'] if categorias_disponibles else 0},
   "id_prioridad": {prioridades_disponibles[0]['id'] if prioridades_disponibles else 0},
   "ficha_tecnica": {{
-    "diagnostico_probable": "...",
+    "diagnostico_probable": "Explicación técnica de la falla.",
+    "posibles_causas": ["Causa 1", "Causa 2"],
     "piezas_necesarias": ["p1", "p2"],
     "repuestos_sugeridos": ["r1", "r2"],
     "protocolo_tecnico": ["paso 1", "paso 2"]
@@ -126,6 +130,7 @@ Responde con este formato exacto:
             id_prioridad=prioridades_disponibles[1]['id'] if len(prioridades_disponibles) > 1 else 1,
             ficha_tecnica=FichaTecnica(
                 diagnostico_probable="Pendiente de revisión manual",
+                posibles_causas=["No se pudo determinar vía IA"],
                 piezas_necesarias=[],
                 repuestos_sugeridos=[],
                 protocolo_tecnico=["Revisar evidencias físicas"]
