@@ -60,9 +60,9 @@ async def reportar_emergencia(
     resumen_taller = ""
     ficha_tecnica = None
 
-    # CU08, CU09, CU10: IA processing si hay texto o imágenes
-    print(f"Evaluando IA: texto={bool(data.texto_adicional)}, fotos={len(data.evidencias_urls)}")
-    if data.texto_adicional or data.evidencias_urls:
+    # CU08, CU09, CU10: IA processing si hay contenido para analizar
+    print(f"Evaluando IA: desc={bool(data.descripcion)}, texto_ad={bool(data.texto_adicional)}, fotos={len(data.evidencias_urls)}")
+    if data.descripcion or data.texto_adicional or data.evidencias_urls:
         try:
             # Obtener catálogos para el prompt de IA
             cats_res = await db.execute(select(CategoriaProblema.id, CategoriaProblema.descripcion))
@@ -126,7 +126,7 @@ async def reportar_emergencia(
         idCliente=cliente_id,
         placaVehiculo=data.placaVehiculo,
         audio_url=data.audio_url,
-        es_valida=True if not data.texto_adicional else True # Se actualizará abajo si la IA lo dice
+        es_valida=True # Se actualizará abajo si la IA lo dice
     )
     db.add(emergencia)
     await db.flush()
@@ -168,11 +168,11 @@ async def reportar_emergencia(
             
             if not ia_result.es_valida:
                 try:
-                    from app.services.chat_service import enviar_notificacion_push
-                    await enviar_notificacion_push(
-                        user_id=cliente.idUsuario,
-                        title="Reporte Requiere Corrección",
-                        body=f"La IA no pudo validar tu reporte: {ia_result.motivo_rechazo}. Por favor, corrige los datos o cancela.",
+                    await NotificationService.enviar_notificacion_usuario(
+                        db=db,
+                        user_id=cliente_id,
+                        titulo="Reporte Requiere Corrección",
+                        cuerpo=f"La IA no pudo validar tu reporte: {ia_result.motivo_rechazo}. Por favor, corrige los datos o cancela.",
                         data={
                             "tipo": "emergencia_invalida",
                             "emergencia_id": str(emergencia.id),
@@ -673,9 +673,9 @@ async def actualizar_emergencia(id_emergencia: int, data: EmergenciaCreate, user
     emergencia.direccion = data.direccion
     emergencia.audio_url = data.audio_url
     
-    # 3. Re-procesar IA si hay texto o imágenes
-    print(f"🔍 [Update] Evaluando IA: texto={bool(data.texto_adicional)}, fotos={len(data.evidencias_urls)}")
-    if data.texto_adicional or data.evidencias_urls:
+    # 3. Re-procesar IA si hay contenido
+    print(f"🔍 [Update] Evaluando IA: desc={bool(data.descripcion)}, texto_ad={bool(data.texto_adicional)}, fotos={len(data.evidencias_urls)}")
+    if data.descripcion or data.texto_adicional or data.evidencias_urls:
         from app.services.ai_service import analizar_transcripcion_whisper
         from app.core.config import settings
 
