@@ -25,7 +25,7 @@ from app.services import ai_service
 from app.core.config import settings
 from app.models.cliente import Cliente
 from app.models.metodo_pago import MetodoPago
-from app.schemas.metodo_pago import MetodoPagoOut, SetupIntentOut
+from app.schemas.metodo_pago import MetodoPagoOut, SetupIntentOut, MetodoPagoCreate
 from app.schemas.pago import PagoStripeCreate, PagoOut, PagoCreate
 from app.core.socket_manager import manager
 
